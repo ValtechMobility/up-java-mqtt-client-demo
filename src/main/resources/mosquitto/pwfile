@@ -1,2 +1,4 @@
+#java_client is the user, java_pw is the password
 java_client:$7$101$qZHxNL01xknTOT4/$66OzUZW33qaWY40pkYzbxOBa5fWFvIkWyALnZrErHPe9KuD3GkES5HCblXCyWYfMxOj0X82dLJx+vNKe2UaY0w==
+#rust_client is the user, rust_pw is the password
 rust_client:$7$101$CA+wRbS5bIXbEx9h$wFhKfBtMTJATr0Ww6lCwa9DMlwe5mB0craNmjzQkEdha2TqMfxz47kI+6R34fmp6TG0ronvX/P6PaEHKHiJ9yg==

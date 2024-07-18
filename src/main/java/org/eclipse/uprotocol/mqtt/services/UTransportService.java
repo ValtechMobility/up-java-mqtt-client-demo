@@ -32,7 +32,7 @@ public class UTransportService {
     public UListener registerListener(String listenerName, UUri sourceUUri ,UUri sinkUUri) {
         final UListener uListener = uListenerService.saveListener(listenerName, sourceUUri, sinkUUri);
         final UTransport transport = getTransport(sourceUUri);
-        transport.registerListener(sinkUUri,uListener);
+        transport.registerListener(sinkUUri,uListener).toCompletableFuture().join();
         return uListener;
     }
 
@@ -42,6 +42,6 @@ public class UTransportService {
 
     public void send(UMessage uMessage){
         final UTransport transport = getTransport(uMessage.getAttributes().getSource());
-        transport.send(uMessage);
+        transport.send(uMessage).toCompletableFuture().join();
     }
 }

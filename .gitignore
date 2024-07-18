@@ -123,3 +123,6 @@ Temporary Items
 
 ### Ascii Doc ###
 documentation/doc/.gradle/
+
+### Vaadin generated stuff ###
+src/main/frontend/generated/

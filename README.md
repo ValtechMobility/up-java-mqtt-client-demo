@@ -4,7 +4,7 @@
 
 This repository includes a frontend with a Java-MQTT-Client that is able to send Messages via uProtocol. 
 It also sets up a Mosquitto MQTT Broker as a transport mechanism. 
-You can use it to Send and Receive Messages via MQTT and add other clients (e.g. Rust-based, ...) and let them communciate with each other. 
+You can use it to Send and Receive Messages via MQTT and add other clients (e.g. Rust-based, ...) and let them communicate with each other. 
 
 ## Preconditions
 
