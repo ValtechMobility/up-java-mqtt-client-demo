@@ -1,14 +1,17 @@
 package org.eclipse.uprotocol.mqtt.views.publish;
 
+import org.eclipse.uprotocol.communication.UPayload;
 import org.eclipse.uprotocol.mqtt.services.UTransportService;
 import org.eclipse.uprotocol.mqtt.views.MainLayout;
-import org.eclipse.uprotocol.v1.UAttributes;
+import org.eclipse.uprotocol.transport.builder.UMessageBuilder;
 import org.eclipse.uprotocol.v1.UMessage;
+import org.eclipse.uprotocol.v1.UPayloadFormat;
 import org.eclipse.uprotocol.v1.UUri;
 
 import com.google.protobuf.ByteString;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
@@ -54,6 +57,16 @@ public class PublishView extends HorizontalLayout {
         TextField sourceResourceId = new TextField("Resource ID");
         sourceResourceId.setValue("0");
 
+        Header messageTypeHeader = new Header();
+        messageTypeHeader.add("Message Type");
+        messageTypeHeader.getStyle().setFontSize("2em");
+
+        Checkbox notificationCheckBox = new Checkbox("Send notification? (Is currently always the case and can be switched off in the future)");
+        notificationCheckBox.setValue(true);
+        // For now, set this to not editable as the used up-java version doesn't accomodate for
+        // non-permitted zero length topics
+        notificationCheckBox.setReadOnly(true);
+
         // Sink UUri Details
         Header sinkHeader = new Header();
         sinkHeader.add("Sink Details");
@@ -70,6 +83,23 @@ public class PublishView extends HorizontalLayout {
         TextField sinkResourceId = new TextField("Resource ID");
         sinkResourceId.setValue("0xFFFF");
 
+        // Disable sink fields if it's a publish message, enable if it's a notification
+        notificationCheckBox.addValueChangeListener(e -> {
+            if (notificationCheckBox.getValue().equals(Boolean.FALSE)){
+                sinkHeader.setEnabled(false);
+                sinkAuthorityName.setEnabled(false);
+                sinkUeId.setEnabled(false);
+                sinkUeVersionMajor.setEnabled(false);
+                sinkResourceId.setEnabled(false);
+            }else{
+                sinkHeader.setEnabled(true);
+                sinkAuthorityName.setEnabled(true);
+                sinkUeId.setEnabled(true);
+                sinkUeVersionMajor.setEnabled(true);
+                sinkResourceId.setEnabled(true);
+            }
+        });
+
         // Insert blank lines for prettier formatting
         final Span blankLine = new Span("");
         blankLine.getStyle().setHeight("2em");
@@ -78,9 +108,15 @@ public class PublishView extends HorizontalLayout {
         // Button with trigger for uTransport
         Button sendMessageButton = new Button("Send message");
         sendMessageButton.addClickListener(e -> {
-            extractInfoAndSendMessage(uTransportService, sourceAuthorityName, sourceUeId, sourceUeVersionMajor,
-                    sourceResourceId, sinkAuthorityName, sinkUeId, sinkUeVersionMajor, sinkResourceId,
-                    messagePayloadTextfield);
+            System.out.println(notificationCheckBox.getValue());
+            if(notificationCheckBox.getValue().equals(Boolean.TRUE)) {
+                extractInfoAndSendNotification(uTransportService, sourceAuthorityName, sourceUeId, sourceUeVersionMajor,
+                        sourceResourceId, sinkAuthorityName, sinkUeId, sinkUeVersionMajor, sinkResourceId,
+                        messagePayloadTextfield);
+            }else{
+                extractInfoAndPublishMessage(uTransportService, sourceAuthorityName, sourceUeId, sourceUeVersionMajor,
+                        sourceResourceId, messagePayloadTextfield);
+            }
         });
         sendMessageButton.addClickShortcut(Key.ENTER);
 
@@ -93,6 +129,8 @@ public class PublishView extends HorizontalLayout {
         formLayout.setColspan(sourceUeId, 2);
         formLayout.setColspan(sourceUeVersionMajor, 2);
         formLayout.setColspan(sourceResourceId, 2);
+        formLayout.setColspan(messageTypeHeader, 8);
+        formLayout.setColspan(notificationCheckBox,8);
         formLayout.setColspan(sinkHeader, 8);
         formLayout.setColspan(sinkAuthorityName, 2);
         formLayout.setColspan(sinkUeId, 2);
@@ -104,7 +142,8 @@ public class PublishView extends HorizontalLayout {
 
         // Add components to layout
         formLayout.add(messageHeader, messagePayloadTextfield, sourceHeader, sourceAuthorityName, sourceUeId
-                , sourceUeVersionMajor, sourceResourceId, sinkHeader, sinkAuthorityName, sinkUeId, sinkUeVersionMajor
+                , sourceUeVersionMajor, sourceResourceId, messageTypeHeader, notificationCheckBox, sinkHeader
+                , sinkAuthorityName, sinkUeId, sinkUeVersionMajor
                 , sinkResourceId, blankLine,spacingButton, sendMessageButton);
         formLayout.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 8)
@@ -114,7 +153,7 @@ public class PublishView extends HorizontalLayout {
         add(formLayout);
     }
 
-    private static void extractInfoAndSendMessage(final UTransportService uTransportService, final TextField sourceAuthorityName,
+    private static void extractInfoAndSendNotification(final UTransportService uTransportService, final TextField sourceAuthorityName,
             final TextField sourceUeId, final TextField sourceUeVersionMajor, final TextField sourceResourceId,
             final TextField sinkAuthorityName, final TextField sinkUeId, final TextField sinkUeVersionMajor,
             final TextField sinkResourceId, final TextField messagePayloadTextfield) {
@@ -132,14 +171,32 @@ public class PublishView extends HorizontalLayout {
                         .setUeVersionMajor(Integer.decode(sinkUeVersionMajor.getValue()))
                         .setResourceId(Integer.decode(sinkResourceId.getValue()))
                         .build();
-        final UMessage uMessage = UMessage.newBuilder()
-                .setPayload(ByteString.copyFromUtf8(messagePayloadTextfield.getValue()))
-                .setAttributes(UAttributes.newBuilder()
-                        .setSource(sourceUUri)
-                        .setSink(sinkUUri)
-                        .build())
-                .build();
+        final UPayload uPayload = new UPayload(ByteString.copyFromUtf8(messagePayloadTextfield.getValue()),
+                UPayloadFormat.UPAYLOAD_FORMAT_RAW);
+        final UMessage uMessage = UMessageBuilder.notification(sourceUUri, sinkUUri).
+                build(uPayload);
         uTransportService.send(uMessage);
-        Notification.show("Message sent!");
+        Notification.show("Notification sent!");
+    }
+
+    private static void extractInfoAndPublishMessage(final UTransportService uTransportService,
+            final TextField sourceAuthorityName,
+            final TextField sourceUeId, final TextField sourceUeVersionMajor, final TextField sourceResourceId,
+            final TextField messagePayloadTextfield) {
+        final UUri sourceUUri =
+                UUri.newBuilder()
+                        .setAuthorityName(sourceAuthorityName.getValue())
+                        .setUeId(Integer.decode(sourceUeId.getValue()))
+                        .setUeVersionMajor(Integer.decode(sourceUeVersionMajor.getValue()))
+                        .setResourceId(Integer.decode(sourceResourceId.getValue()))
+                        .build();
+        final UPayload uPayload = new UPayload(ByteString.copyFromUtf8(messagePayloadTextfield.getValue()),
+                UPayloadFormat.UPAYLOAD_FORMAT_RAW);
+        final UMessage uMessage = UMessageBuilder.publish(sourceUUri).
+                build(uPayload);
+
+        uTransportService.send(uMessage);
+
+        Notification.show("Message published!");
     }
 }
